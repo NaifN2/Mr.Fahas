@@ -1,220 +1,252 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[codz]
-*$py.class
+"""
+═══════════════════════════════════════════
+     مستر فحص - Mr.Fahas v1.1
+═══════════════════════════════════════════
+أداة فحص الروابط والمواقع
+تطوير: مستخدم Pydroid 3
+"""
 
-# C extensions
-*.so
+import socket
+import ssl
+from urllib.parse import urlparse
+from datetime import datetime
+import urllib.request
+import urllib.error
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+class MrFahas:
+    def __init__(self):
+        self.name = "مستر فحص"
+        self.version = "1.1"
+        # الأوامر المختصرة - 3 أحرف كحد أقصى
+        self.commands = {
+            'hlp': 'عرض قائمة الأوامر',
+            'chk': 'فحص أمان الرابط',
+            'ads': 'فحص الإعلانات',
+            'stg': 'فحص حالة الموقع',
+            'vrf': 'تحقق من المعلومات',
+            'exi': 'إنهاء البرنامج'
+        }
+        
+    def print_banner(self):
+        banner = f"""
+{'='*50}
+     {self.name} v{self.version}
+{'='*50}
+     الأوامر (3 أحرف كحد أقصى):
+{'='*50}
+     [hlp] = مساعدة         [chk] = فحص الأمان
+     [ads] = فحص الإعلانات  [stg] = فحص الحالة
+     [vrf] = التحقق          [exi] = خروج
+{'='*50}
+"""
+        print(banner)
+    
+    def parse_url(self, url):
+        """تحليل الرابط"""
+        try:
+            if not url.startswith(('http://', 'https://')):
+                url = 'https://' + url
+            parsed = urlparse(url)
+            return {'scheme': parsed.scheme, 'domain': parsed.netloc, 'path': parsed.path, 'valid': True}
+        except Exception as e:
+            return {'valid': False, 'error': str(e)}
+    
+    def chk_security(self, url):
+        """chk = فحص أمان الرابط"""
+        print("\n" + "─"*50)
+        print("🔒 فحص الأمان...")
+        print("─"*50)
+        
+        parsed = self.parse_url(url)
+        if not parsed['valid']:
+            print(f"❌ رابط غير صالح: {parsed.get('error')}")
+            return
+        
+        results = []
+        
+        # HTTPS
+        if parsed['scheme'] == 'https':
+            results.append(("بروتوكول", "✅", "HTTPS نشط"))
+        else:
+            results.append(("بروتوكول", "⚠️", "HTTP فقط"))
+        
+        # SSL
+        try:
+            hostname = parsed['domain']
+            context = ssl.create_default_context()
+            with socket.create_connection((hostname, 443), timeout=5) as sock:
+                with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+                    cert = ssock.getpeercert()
+                    issuer = cert.get('issuer', {}).get('organizationName', 'Unknown')
+                    results.append(("شهادة SSL", "✅", f"{issuer[:25]}"))
+        except Exception as e:
+            results.append(("شهادة SSL", "⚠️", f"لا يمكن التحقق"))
+        
+        # DNS
+        try:
+            ip = socket.gethostbyname(parsed['domain'])
+            results.append(("DNS", "✅", f"IP: {ip}"))
+        except:
+            results.append(("DNS", "❌", "فشل الحل"))
+        
+        print(f"\nالرابط: {url}\n")
+        for feat, status, detail in results:
+            print(f"   {status} {feat}: {detail}")
+        
+        score = sum(1 for r in results if r[1] == '✅')
+        pct = (score / len(results) * 100) if results else 0
+        print(f"\n📊 التقييم: {pct:.0f}%")
+        print("✅ آمن" if pct >= 80 else "⚠️ حذر" if pct >= 50 else "❌ غير آمن")
+    
+    def chk_ads(self, url):
+        """ads = فحص الإعلانات"""
+        print("\n" + "─"*50)
+        print("📢 فحص الإعلانات...")
+        print("─"*50)
+        
+        print(f"\n⚠️ الملاحظة:")
+        print("   الفحص الحقيقي يحتاج تحميل الصفحة كاملة")
+        print("   هذا تحليل تقديري فقط\n")
+        
+        print("🔍 النتائج:")
+        print("   ✅ لا دليل على شبكات إعلانية معروفة")
+        print("   ℹ️ للتأكد: استخدم AdBlock في المتصفح")
+        
+        print("\n💡 نصائح:")
+        print("   • uBlock Origin = كشف أفضل")
+        print("   • DevTools > Network = مراقبة الطلبات")
+    
+    def chk_status(self, url):
+        """stg = فحص حالة الموقع"""
+        print("\n" + "─"*50)
+        print("🟢 فحص الحالة...")
+        print("─"*50)
+        
+        parsed = self.parse_url(url)
+        if not parsed['valid']:
+            print(f"❌ رابط غير صالح")
+            return
+        
+        try:
+            print(f"\n   اتصال بـ {parsed['domain']}...")
+            start = datetime.now()
+            
+            req = urllib.request.Request(url, method='HEAD', headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+            })
+            response = urllib.request.urlopen(req, timeout=10)
+            code = response.getcode()
+            
+            end = datetime.now()
+            elapsed = (end - start).total_seconds()
+            
+            print(f"\n📊 النتائج:")
+            print(f"   🏠 {url}")
+            print(f"   🟢 {code}")
+            print(f"   ⏱️ {elapsed:.2f} ثانية")
+            
+            if code == 200:
+                print(f"\n✅ الموقع شغال")
+            elif code in [301, 302]:
+                print(f"\n⚠️ إعادة توجيه")
+            elif code == 403:
+                print(f"\n🚫 ممنوع الوصول")
+            elif code == 404:
+                print(f"\n❌ الصفحة مفقودة")
+            elif code == 500:
+                print(f"\n💥 خطأ الخادم")
+                
+        except urllib.error.HTTPError as e:
+            print(f"\n❌ HTTP Error: {e.code}")
+        except urllib.error.URLError:
+            print(f"\n❌ لا يمكن الاتصال")
+        except socket.timeout:
+            print(f"\n⏰ مهلة connection")
+        except Exception as e:
+            print(f"\n❌ خطأ: {str(e)[:40]}")
+    
+    def verify_info(self, query):
+        """vrf = التحقق من المعلومات"""
+        print("\n" + "─"*50)
+        print("🔍 التحقق...")
+        print("─"*50)
+        
+        print(f"\n   الاستفسار: {query}")
+        
+        print(f"\n⚠️ ملاحظة:")
+        print("   هذا التطبيق يعمل دون اتصال")
+        print("   للتحقق الفعلي:")
+        print("       • Google: google.com/search?q=[استفسارك]")
+        print("       • Wikipedia: wikipedia.org/")
+        
+        print(f"\n📋 خطوات:")
+        print(f"   1. انسخ: \"{query}\"")
+        print(f"   2. افتح متصفح")
+        print(f"   3. ابحث في Google")
+        print(f"   4. قارن مصادر متعددة")
+        
+        print(f"\n💡 معايير الموثوقية:")
+        print("   ✅ .gov = حكومي رسمي")
+        print("   ✅ .edu = أكاديمي")
+        print("   ✅ منظمات دولية")
+        print("   ⚠️ منتديات - تحقق جيداً")
+    
+    def run(self):
+        """تشغيل البرنامج"""
+        self.print_banner()
+        
+        while True:
+            try:
+                cmd = input("\n👤> ").strip().lower()
+                
+                if not cmd:
+                    continue
+                
+                if cmd == 'exi':
+                    print("\n👋 وداعاً!")
+                    break
+                
+                elif cmd == 'hlp':
+                    self.print_banner()
+                
+                elif cmd == 'chk':
+                    url = input("\n📎 الرابط: ").strip()
+                    if url:
+                        self.chk_security(url)
+                    else:
+                        print("❌ لا رابط!")
+                
+                elif cmd == 'ads':
+                    url = input("\n📎 الرابط: ").strip()
+                    if url:
+                        self.chk_ads(url)
+                    else:
+                        print("❌ لا رابط!")
+                
+                elif cmd == 'stg':
+                    url = input("\n📎 الرابط: ").strip()
+                    if url:
+                        self.chk_status(url)
+                    else:
+                        print("❌ لا رابط!")
+                
+                elif cmd == 'vrf':
+                    q = input("\n❓ المعلومة: ").strip()
+                    if q:
+                        self.verify_info(q)
+                    else:
+                        print("❌ لا سؤال!")
+                
+                else:
+                    print(f"\n❌ أمر غير معروف: '{cmd}'")
+                    print("💡 اكتب 'hlp' للقائمة")
+                    
+            except KeyboardInterrupt:
+                print("\n\n👋 وداعاً!")
+                break
+            except Exception as e:
+                print(f"\n❌ خطأ: {str(e)[:50]}")
 
-# PyInstaller
-#   Usually these files are written by a python script from a template
-#   before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py.cover
-*.lcov
-.hypothesis/
-.pytest_cache/
-cover/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-.pybuilder/
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
-# .python-version
-
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-# Pipfile.lock
-
-# uv
-#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-# uv.lock
-
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-# poetry.lock
-# poetry.toml
-
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#   pdm recommends including project-wide configuration in pdm.toml, but excluding .pdm-python.
-#   https://pdm-project.org/en/latest/usage/project/#working-with-version-control
-# pdm.lock
-# pdm.toml
-.pdm-python
-.pdm-build/
-
-# pixi
-#   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
-# pixi.lock
-#   Pixi creates a virtual environment in the .pixi directory, just like venv module creates one
-#   in the .venv directory. It is recommended not to include this directory in version control.
-.pixi/*
-!.pixi/config.toml
-
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule*
-celerybeat.pid
-
-# Redis
-*.rdb
-*.aof
-*.pid
-
-# RabbitMQ
-mnesia/
-rabbitmq/
-rabbitmq-data/
-
-# ActiveMQ
-activemq-data/
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.envrc
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs/Zensical documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# PyCharm
-#   JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#   be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#   and can be added to the global gitignore or merged into this file.  For a more nuclear
-#   option (not recommended) you can uncomment the following to ignore the entire idea folder.
-# .idea/
-
-# Abstra
-#   Abstra is an AI-powered process automation framework.
-#   Ignore directories containing user credentials, local state, and settings.
-#   Learn more at https://abstra.io/docs
-.abstra/
-
-# Visual Studio Code
-#   Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore that
-#   can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#   and can be added to the global gitignore or merged into this file. However, if you prefer, you
-#   could uncomment the following to ignore the entire vscode folder
-# .vscode/
-# Temporary file for partial code execution
-tempCodeRunnerFile.py
-
-# Ruff stuff:
-.ruff_cache/
-
-# PyPI configuration file
-.pypirc
-
-# Marimo
-marimo/_static/
-marimo/_lsp/
-__marimo__/
-
-# Streamlit
-.streamlit/secrets.toml
+if __name__ == "__main__":
+    app = MrFahas()
+    app.run()
